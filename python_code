@@ -1,0 +1,157 @@
+#! python3
+### this program gets the full ARN from appt scheduler and then gets the job stat from WFA,
+### pulling the data from a user specified excel document and saving the results to a new excel doc.
+
+import openpyxl
+import pyperclip
+import pyautogui
+import time
+import sys
+import os
+from openpyxl import load_workbook
+from tkinter import *
+from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
+from tkinter.messagebox import *
+pyautogui.FAILSAFE = True
+
+print('Once Appointment scheduler opens, log in and make sure it is the first tab.')
+eRow = 3
+print('what is your center name?')
+center = input()
+while True:
+    print('type yes if you would like a new appointment scheduler window opened, no if not')
+    answer = input()
+    if answer == 'yes':
+        os.startfile('https://asapp.foss.qintra.com/asapp/faces/index.jsp')
+        break
+    elif answer == 'no':
+        break
+Tk().withdraw()
+name = askopenfilename()
+
+def click(x,y):
+    pyautogui.click(x,y)
+
+def pixelMatch(x, y, r, g, b):
+    pyautogui.pixel(x, y) == (r, g, b)
+
+def copy():
+    pyautogui.hotkey('ctrl', 'c')
+    
+def type2(x):
+    pyautogui.typewrite(x)
+
+def sleep(x):
+    time.sleep(x)
+    
+def updateOrderNumber():
+    print(name)
+    wb = load_workbook(filename = name)
+    wb.get_sheet_names()
+    ws = wb.get_sheet_by_name('Report Data')
+    print(ws.max_row)
+    global eRow
+    click(92, 1027) # ie taskbar
+    click(105, 952) # ie window (if multiple tabs - on first)
+    click(528, 36)  # ie refresh
+    time.sleep(3)
+    click(84, 245)  # appt manager
+    sleep(1)
+    for i in range(ws.max_row-2):
+        click(102, 292) #search/mod/del
+        sleep(.9)
+        click(741, 301) #arn box
+        try:
+            type2(ws.cell(row=eRow, column =7).value)
+        except TypeError:
+            break
+        click(634, 423) #search button
+        if pixelMatch(427, 275, 255, 0, 0):
+           ws.cell(row=eRow, column =8).value = 'Cancelled'
+           eRow += 1
+           click(741, 301) #arn box
+           try:
+               type2(ws.cell(row=eRow, column =7).value)
+           except TypeError:
+              continue
+           continue
+        elif pixelMatch(738, 527, 231, 166, 0):
+            click(952, 589) # ok button
+        elif pixelMatch(746, 528, 231, 164, 0):
+            click(952, 589)
+        sleep(.15)
+        if pixelMatch(441, 490, 255, 255, 255):
+            sleep(.2)
+        pyautogui.doubleClick(673, 483) # order number
+        copy()
+        ws.cell(row=eRow, column =10).value = pyperclip.paste()
+        eRow += 1
+        wb.save(name[:49] + '_ordernum.xlsx')
+
+def updateJobStat():
+    wb = load_workbook(filename = name[:49] + '_ordernum.xlsx')
+    wb.get_sheet_names()
+    ws = wb.get_sheet_by_name('Report Data')
+    eRow = 3
+    pyautogui.click(150, 1028) #wfa taskbar
+    print(ws.max_row)
+    for i in range(ws.max_row-2):
+        pyautogui.press('f8')
+        if pixelMatch(160, 213, 0, 255, 0):
+            time.sleep(2)
+            pyautogui.press('f8')
+            time.sleep(2)
+            pyautogui.press('f8')
+            if pixelMatch(160, 213, 0, 255, 0):
+                pyautogui.confirm('Clear WFA!!')
+        elif pixelMatch(153, 209, 0, 255, 0):
+            time.sleep(2)
+            pyautogui.press('f8')
+            time.sleep(2)
+            pyautogui.press('f8')
+            if pixelMatch(153, 209, 0, 255, 0): 
+                pyautogui.confirm('Clear WFA!!')
+        elif pixelMatch(157, 201, 0, 255, 0):
+            time.sleep(2)
+            pyautogui.press('f8')
+            time.sleep(2)
+            pyautogui.press('f8')
+            if pixelMatch(157, 201, 0, 255, 0):
+                pyautogui.confirm('Clear WFA!!')
+        try:
+            if len(ws.cell(row=eRow, column =10).value) == 9:
+                click(72, 176)
+                pyautogui.press('tab')
+                pyautogui.typewrite(center)
+                pyautogui.press('tab')
+                pyautogui.press('tab')
+                type2(ws.cell(row=eRow, column =10).value)
+                time.sleep(.3)
+                pyautogui.press('f1')
+                time.sleep(1)
+                pyautogui.mouseDown(1112, 195)
+                pyautogui.mouseUp(1174, 217)
+                copy()
+                ws.cell(row=eRow, column =8).value = pyperclip.paste()
+                eRow += 1
+                wb.save(name[:49] + '_jStat.xlsx')
+            else:
+                eRow += 1
+        except TypeError:
+            eRow += 1
+
+
+time.sleep(3)
+pyautogui.confirm('Click OK when ready')
+print('Updating order number in 3...')
+time.sleep(1)
+print('2...')
+time.sleep(1)
+print('1...')
+time.sleep(1)
+print('updating order number')
+time.sleep(1)
+updateOrderNumber()
+print('updating job Stat')
+updateJobStat()  
